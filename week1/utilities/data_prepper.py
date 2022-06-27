@@ -225,6 +225,7 @@ class DataPrepper:
     #         {'name': 'sale_price_function', 'value': 949.99},
     #         {'name': 'price_function', 'value': 0.0}]}]
     # For each query, make a request to OpenSearch with SLTR logging on and extract the features
+
     def __log_ltr_query_features(self, query_id, key, query_doc_ids, click_prior_query, no_results, terms_field="_id"):
         print(query_doc_ids, 'are the query doc ids')
 
@@ -235,28 +236,29 @@ class DataPrepper:
         # IMPLEMENT_START --
         
         print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
+
         # Loop over the hits structure returned by running `log_query` and then extract out the 
         # features from the response per query_id and doc id.  Also capture and return all query/doc pairs that didn't return features
         # Your structure should look like the data frame below
+        def get_field_value(_list, key):
+            for row in _list:
+                assert isinstance(row, dict)
+                if row['name'] == key and 'value' in row:
+                    return row['value']
+                else:
+                    return 0.0
+                    
         response = self.opensearch.search(body=log_query, index=self.index_name)
         hits_df = pd.DataFrame.from_records(response['hits']['hits'])
-        if hits_df.shape[0] != len(query_doc_ids):
-            import pdb; pdb.set_trace()
-        keep_columns = ['_id', '']
-        
-        feature_results = {}
-        feature_results["doc_id"] = []  # capture the doc id so we can join later
-        feature_results["query_id"] = []  # ^^^
-        feature_results["sku"] = []
-        feature_results["name_match"] = []
-        rng = np.random.default_rng(12345)
-        for doc_id in query_doc_ids:
-            feature_results["doc_id"].append(doc_id)  # capture the doc id so we can join later
-            feature_results["query_id"].append(query_id)
-            feature_results["sku"].append(doc_id)  hits
-            feature_results["name_match"].append(rng.random())
-        frame = pd.DataFrame(feature_results)
-        return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
+        hits_df['field_scores'] = hits_df['fields'].map(lambda x: x.get('_ltrlog')[0]['log_entry'])
+        hits_df['name_match'] = hits_df['field_scores'].map(lambda x: get_field_value(x, 'name_match'))
+        # print(hits_df['name_match']) #  [{'name': 'name_match', 'value': 5.9175096}]
+        hits_df['doc_id'] = hits_df['_id']        
+        hits_df['sku'] = hits_df['_id']
+        hits_df['query_id'] = hits_df['_id']
+        # if hits_df.shape[0] != len(query_doc_ids):
+        #     import pdb; pdb.set_trace()
+        return hits_df.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
         # IMPLEMENT_END
 
     # Can try out normalizing data, but for XGb, you really don't have to since it is just finding splits
