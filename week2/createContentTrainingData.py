@@ -20,10 +20,10 @@ general.add_argument("--label", default="id", help="id is default and needed for
 # Consuming all of the product data, even excluding music and movies,
 # takes a few minutes. We can speed that up by taking a representative
 # random sample.
-general.add_argument("--sample_rate", default=1.0, type=float, help="The rate at which to sample input (default is 1.0)")
+general.add_argument("--sample_rate", default=33.0, type=float, help="The rate at which to sample input (default is 1.0)")
 
 # IMPLEMENT: Setting min_products removes infrequent categories and makes the classifier's task easier.
-general.add_argument("--min_products", default=0, type=int, help="The minimum number of products per category (default is 0).")
+general.add_argument("--min_products", default=3, type=int, help="The minimum number of products per category (default is 0).")
 
 args = parser.parse_args()
 output_file = args.output

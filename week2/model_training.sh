@@ -1,0 +1,48 @@
+#!/bin/bash
+
+WORKING_DIR=/workspace/datasets/fasttext
+MODEL_NAME="category_model"
+
+
+
+rm $WORKING_DIR/shuffled_labeled_products.txt
+shuf $WORKING_DIR/labeled_products.txt > $WORKING_DIR/shuffled_labeled_products.txt
+head -10000 $WORKING_DIR/shuffled_labeled_products.txt > $WORKING_DIR/training_data.txt
+tail -5000 $WORKING_DIR/shuffled_labeled_products.txt > $WORKING_DIR/test_data.txt
+
+# train_lines=$(ls *.log | grep "candump" | tail -n 1)
+
+# ~/fastText-0.9.2/fasttext supervised -input $WORKING_DIR/training_data.txt -output $MODEL_NAME
+~/fastText-0.9.2/fasttext supervised -input $WORKING_DIR/training_data.txt -output $MODEL_NAME -lr 1.0 -epoch 25 -wordNgrams 2
+# Default
+# Number of words:  11018
+# Number of labels: 1390
+# Progress: 100.0% words/sec/thread:     442 lr:  0.000000 avg.loss: 13.533681 ETA:   0h 0m 0s
+
+~/fastText-0.9.2/fasttext test category_model.bin /workspace/datasets/fasttext/test_data.txt
+
+# Read 0M words
+# Number of words:  11079
+# Number of labels: 1358
+# Progress: 100.0% words/sec/thread:     486 lr:  0.000000 avg.loss: 13.267459 ETA:   0h 0m 0s
+# Read 0M words
+# Number of words:  11079
+# Number of labels: 1358
+# Progress: 100.0% words/sec/thread:     652 lr:  0.000000 avg.loss:  1.263036 ETA:   0h 0m 0s
+# model_training.sh: line 17: 2: command not found
+# N       4807
+# P@1     0.604
+# R@1     0.604
+
+
+# Original , no nograms of additional training
+# N       4854
+# P@1     0.145
+# R@1     0.145
+
+# What about p@5
+#  ~/fastText-0.9.2/fasttext test category_model.bin /workspace/datasets/fasttext/test_data.txt 5
+# N       4854
+# P@5     0.0434
+# R@5     0.217
+
