@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from collections import defaultdict
 import string
+from tqdm import tqdm
 
 def transform_name(product_name):
     ''' basic string cleaning'''  
@@ -48,7 +49,7 @@ if args.label == 'name':
 # https://github.com/gitpod-io/gitpod/issues/758
 print("Writing results to %s" % output_file)
 with open(output_file, 'w') as output:
-    for filename in os.listdir(directory):
+    for filename in tqdm(os.listdir(directory)):
         if filename.endswith(".xml"):
             print("Processing %s" % filename)
             f = os.path.join(directory, filename)

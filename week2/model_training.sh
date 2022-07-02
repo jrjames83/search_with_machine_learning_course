@@ -1,14 +1,15 @@
 #!/bin/bash
 
+# After running createContentTrainingData.py
+# cat /workspace/datasets/fasttext/labeled_products.txt |sed -e "s/\([.\!?,'/()]\)/ \1 /g" | tr "[:upper:]" "[:lower:]" | sed "s/[^[:alnum:]_]/ /g" | tr -s ' ' > /workspace/datasets/fasttext/normalized_labeled_products.txt
+# normalized_labeled_products
+# shuf /workspace/datasets/fasttext/normalized_labeled_products.txt > /workspace/datasets/fasttext/shuffled_normalized_labeled_products.txt
+
+
 WORKING_DIR=/workspace/datasets/fasttext
 MODEL_NAME="category_model"
-
-
-
-rm $WORKING_DIR/shuffled_labeled_products.txt
-shuf $WORKING_DIR/labeled_products.txt > $WORKING_DIR/shuffled_labeled_products.txt
-head -10000 $WORKING_DIR/shuffled_labeled_products.txt > $WORKING_DIR/training_data.txt
-tail -5000 $WORKING_DIR/shuffled_labeled_products.txt > $WORKING_DIR/test_data.txt
+head -15000 $WORKING_DIR/shuffled_normalized_labeled_products.txt > $WORKING_DIR/training_data.txt
+tail -5000 $WORKING_DIR/shuffled_normalized_labeled_products.txt > $WORKING_DIR/test_data.txt
 
 # train_lines=$(ls *.log | grep "candump" | tail -n 1)
 
@@ -45,4 +46,11 @@ tail -5000 $WORKING_DIR/shuffled_labeled_products.txt > $WORKING_DIR/test_data.t
 # N       4854
 # P@5     0.0434
 # R@5     0.217
+
+
+# Final Read (7/2/22) - minimum 20 products per category, 20% sample
+# Progress: 100.0% words/sec/thread:    1080 lr:  0.000000 avg.loss:  0.656024 ETA:   0h 0m 0s
+# N       4998
+# P@1     0.697
+# R@1     0.697
 
