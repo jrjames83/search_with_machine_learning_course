@@ -48,8 +48,8 @@ def create_prior_queries(doc_ids, doc_id_weights,
     return click_prior_query
 
 
-# Hardcoded query here.  Better to use search templates or other query config.
-def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None):
+def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=2, source=None, use_syns=False):
+    name_field = "name.synonyms" if use_syns else "name"
     query_obj = {
         'size': size,
         "sort": [
@@ -65,7 +65,7 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
                         "should": [  #
                             {
                                 "match": {
-                                    "name": {
+                                    name_field: {
                                         "query": user_query,
                                         "fuzziness": "1",
                                         "prefix_length": 2,
@@ -89,9 +89,8 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
                                     "type": "phrase",
                                     "slop": "6",
                                     "minimum_should_match": "2<75%",
-                                    "fields": ["name^10", "name.hyphens^10", "shortDescription^5",
-                                               "longDescription^5", "department^0.5", "sku", "manufacturer", "features",
-                                               "categoryPath", "name_synonyms"]
+                                    "fields": [f"{name_field}^10", "name.hyphens^10", "shortDescription^5",
+                                               "longDescription^5", "department^0.5", "sku", "manufacturer", "features", "categoryPath"]
                                 }
                             },
                             {
@@ -187,12 +186,8 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
 
 
 def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc", use_syns=False):
-    # Finish
-    if use_syns:
-        query_obj = create_query(user_query, click_prior_query=None, filters=None, sort=sort, sortDir=sortDir, source=["name.synonyms", "shortDescription"])
-    else:
-        query_obj = create_query(user_query, click_prior_query=None, filters=None, sort=sort, sortDir=sortDir, source=["name", "shortDescription"])
-    logging.info(query_obj)
+    query_obj = create_query(user_query, click_prior_query=None, filters=None, sort="_score", sortDir=sortDir, source=['name', 'shortDescription'], use_syns=use_syns)
+    print(json.dumps(query_obj))
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
         hits = response['hits']['hits']
@@ -213,9 +208,10 @@ if __name__ == "__main__":
                          help='The OpenSearch port')
     general.add_argument('--user',
                          help='The OpenSearch admin.  If this is set, the program will prompt for password too. If not set, use default of admin/admin')
-    geneal.add_argument("-syn", '--synonyms', type=bool, default=True)
+    general.add_argument("--synonyms", default=1, help="Use Synonyms.")
 
     args = parser.parse_args()
+    print(args)
 
     if len(vars(args)) == 0:
         parser.print_usage()
@@ -223,7 +219,12 @@ if __name__ == "__main__":
 
     host = args.host
     port = args.port
+    # Why isn't this evaluating to a boolean?
     use_syns = args.synonyms
+    if use_syns == '1':
+        use_syns = True 
+    else:
+        use_syns = False
     if args.user:
         password = getpass()
         auth = (args.user, password)
@@ -244,14 +245,9 @@ if __name__ == "__main__":
     index_name = args.index
     query_prompt = "\nEnter your query (type 'Exit' to exit or hit ctrl-c):"
     print(query_prompt)
-    for line in fileinput.input():
-        query = line.rstrip()
-        if query == "Exit":
-            break
-        #### W3: classify the query
-        print(f'querying with use_syns {use_syns}')
-        search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns)
-
-        print(query_prompt)
-
+    user_query = input()
+    query = user_query.rstrip()
+    #### W3: classify the query
+    print(f'querying with use_syns {use_syns}')
+    search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns)
     
