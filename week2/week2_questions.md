@@ -113,10 +113,100 @@ Yeah, after modiying the `/utilities/query.py` file to optionally use `name.syno
 
 # For classifying reviews:
 
-What precision (P@1) were you able to achieve?
+## What precision (P@1) were you able to achieve?
 
-What fastText parameters did you use?
 
-How did you transform the review content?
+Here's the classification report, it wasn't very good. 
 
-What else did you try and learn?
+```
+              precision    recall  f1-score   support
+
+ __label__10       0.08      0.08      0.08      1767
+ __label__20       0.05      0.04      0.05       936
+ __label__30       0.07      0.07      0.07      1161
+ __label__40       0.19      0.20      0.20      4025
+ __label__50       0.60      0.60      0.60     12110
+
+    accuracy                           0.42     19999
+   macro avg       0.20      0.20      0.20     19999
+weighted avg       0.42      0.42      0.42     19999
+```
+
+The distribution is dominated by 5 and 4 star reviews:
+
+```
+label distribution
+__label__50    0.607954
+__label__40    0.199256
+__label__10    0.088443
+__label__30    0.059494
+__label__20    0.044848
+__label__00    0.000005
+Name: review, dtype: float64
+label counts
+__label__50    134826
+__label__40     44189
+__label__10     19614
+__label__30     13194
+__label__20      9946
+__label__00         1
+Name: review, dtype: int64
+```
+
+Another thing, I think some of the labels are either incorrect, or have changed:
+
+https://github.com/jrjames83/search_with_machine_learning_course/blob/main/week2/Training%20FastText%20on%20Product%20Reviews.ipynb
+
+If we inspect where the actual label is a 1.0 review and our model is predicting 5.0, e.g.
+
+```python
+(
+    validation.query('review == "__label__10"')
+    .query('predicted == "__label__50"')
+    .sample(10, random_state=333)
+    .drop('blob', axis=1)
+)
+```
+
+You can Google some of them and actually see the 5-stars on best buy
+
+```
+chilidog9578
+Rated 5 out of 5 stars
+Better than Original Endless Summer
+Posted 13 years ago.
+Better shots and better likeability with the people in the movie. Unbelievable camera work and actually more clever dialogue than the original Endless Summer. My biggest problem is that there is NO BLU RAY verison available!! Hopefully that will come along soon because that would be amazing. This is a must buy!!
+
+ I would recommend this to a friend
+ ```
+
+ So, I'd reckon that due to data quality issues, our classification metrics look worse. 
+
+
+## What fastText parameters did you use?
+
+```python
+model = fasttext.train_supervised(input="/workspace/datasets/reviews/shuffled_output.train", 
+                            lr=1.0, 
+                            epoch=25, 
+                            wordNgrams=2,
+                            )
+```
+
+## How did you transform the review content?
+
+Remove punctuation, normalizes spaces, no stemming. 
+```python
+def clean_text(text):
+    new_string = text.translate(text.maketrans('', '', string.punctuation))
+    return " ".join(new_string.split()).lower().strip()
+```
+
+## What else did you try and learn?
+
+Getting jupyter set-up and running in gitpod https://github.com/jrjames83/search_with_machine_learning_course/blob/main/week2/getting_jupyter_running.txt
+
+Also refactoring the `createReviewLabels.py` to use `Multiprocessing` and `BeautifulSoup` for structured data parsing. https://github.com/jrjames83/search_with_machine_learning_course/blob/main/week2/createReviewLabels.py
+
+
+
