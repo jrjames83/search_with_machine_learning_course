@@ -12,6 +12,7 @@ general.add_argument("--input", default=categoriesFilename,  help="The full path
 general.add_argument("--max_depth", default=0, type=int, help="the file to output to")
 
 args = parser.parse_args()
+print(args)
 
 categoriesFilename = args.input
 
