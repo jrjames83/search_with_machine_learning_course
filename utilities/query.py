@@ -11,11 +11,16 @@ from urllib.parse import urljoin
 import pandas as pd
 import fileinput
 import logging
-
+import fasttext
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s')
+
+def load_fasttext_model():
+    model = fasttext.load_model('/workspace/search_with_machine_learning_course/category_model_week3.bin')
+    return model 
+
 
 # expects clicks and impressions to be in the row
 def create_prior_queries_from_group(
@@ -229,6 +234,8 @@ if __name__ == "__main__":
         password = getpass()
         auth = (args.user, password)
 
+    model = load_fasttext_model()
+
     base_url = "https://{}:{}/".format(host, port)
     opensearch = OpenSearch(
         hosts=[{'host': host, 'port': port}],
@@ -247,6 +254,8 @@ if __name__ == "__main__":
     print(query_prompt)
     user_query = input()
     query = user_query.rstrip()
+    prediction = model.predict(query)
+    print(prediction, 'is the predicted class')
     #### W3: classify the query
     print(f'querying with use_syns {use_syns}')
     search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns)
