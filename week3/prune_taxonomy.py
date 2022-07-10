@@ -11,6 +11,7 @@ from nltk.stem import PorterStemmer
 
 porter = PorterStemmer()
 
+
 def clean_text(text):
     new_string = text.translate(text.maketrans('', '', string.punctuation))
     cleaned = " ".join(new_string.split()).lower().strip()
@@ -87,7 +88,10 @@ def get_ultimate_parent(child_category):
 
 
 if __name__ == '__main__':
-    
+    MIN_QUERY = 1000
+    STRATIFY = False
+    NBR_ROWS = 100_000
+
     child_to_parent = get_child_to_parent()    
     cat_lookup = get_cat_lookup()
     
@@ -104,9 +108,6 @@ if __name__ == '__main__':
     queries['leaf_counts'] = queries.index.map(sizes)
     queries['ultimate_parent'] = queries.index.map(get_ultimate_parent)
 
-    MIN_QUERY = int(sys.argv[1])
-    if not MIN_QUERY:
-        MIN_QUERY = 1000
     revised_queries = queries.copy() # to avoid reloading the data!
     solved = False
     while not solved:
@@ -149,19 +150,22 @@ if __name__ == '__main__':
         # Recompute category frequencies and reset the leaf_counts column on our combined data
         sizes = revised_queries.groupby(revised_queries.index).size()
         revised_queries['leaf_counts'] = revised_queries.index.map(sizes)
-
-        # Some assertions
-        # assert revised_queries.leaf_counts.min() >= MIN_QUERY, f'Something went awry here'
         print(revised_queries.index.nunique(), 'is the unique remaining categories')
 
     print(f'Writing the group with {MIN_QUERY} samples per leaf')
 
-    with open('/workspace/datasets/fasttext/labeled_queries.txt', 'w') as f:
-        sampled = revised_queries.groupby(revised_queries.index, group_keys=False)\
-            .apply(lambda x: x.sample(min(len(x), 1000)))
-        sampled['query'] = sampled['query'].map(clean_text)
-        # Shuffle it to avoid bash shuffling later
-        sampled = sampled.sample(frac=1).copy()
+    with open(f'/workspace/datasets/fasttext/labeled_queries_stratified_{STRATIFY}.txt', 'w') as f:
+        if STRATIFY:
+            print(f'Writing Stratified Data - {NBR_ROWS} rows')
+            sampled = revised_queries.groupby(revised_queries.index, group_keys=False)\
+                .apply(lambda x: x.sample(min(len(x), 1000)))
+            sampled['query'] = sampled['query'].map(clean_text)
+            sampled = sampled.sample(frac=1).head(NBR_ROWS)
+        else:
+            print(f'Writing Non-Stratified Data - {NBR_ROWS} rows')
+            sampled = revised_queries.sample(NBR_ROWS)
+            sampled['query'] = sampled['query'].map(clean_text)
+
         for index, row in tqdm(sampled.iterrows()):
             if len(row['query']) > 2:
                 f.write(f"__label__{index} {row['query']}\n")
