@@ -160,5 +160,8 @@ if __name__ == '__main__':
         sampled = revised_queries.groupby(revised_queries.index, group_keys=False)\
             .apply(lambda x: x.sample(min(len(x), 1000)))
         sampled['query'] = sampled['query'].map(clean_text)
+        # Shuffle it to avoid bash shuffling later
+        sampled = sampled.sample(frac=1).copy()
         for index, row in tqdm(sampled.iterrows()):
-            f.write(f"__label__{index} {row['query']}\n")
+            if len(row['query']) > 2:
+                f.write(f"__label__{index} {row['query']}\n")
