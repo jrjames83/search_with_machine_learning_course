@@ -13,17 +13,12 @@ import fileinput
 import logging
 import fasttext
 
+from model_parser import organize_predictions
+from generate_filter_clause import generate_filter
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s')
-
-def load_fasttext_model():
-    model = fasttext.load_model('/workspace/search_with_machine_learning_course/category_model_week3.bin')
-    return model 
-
-def parse_prediction(_prediction):
-    return dict(zip(*_prediction))
-
 
 # expects clicks and impressions to be in the row
 def create_prior_queries_from_group(
@@ -193,8 +188,8 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
     return query_obj
 
 
-def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc", use_syns=False):
-    query_obj = create_query(user_query, click_prior_query=None, filters=None, sort="_score", sortDir=sortDir, source=['name', 'shortDescription'], use_syns=use_syns)
+def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc", use_syns=False, filters=None):
+    query_obj = create_query(user_query, click_prior_query=None, filters=filters, sort="_score", sortDir=sortDir, source=['name', 'shortDescription'], use_syns=use_syns)
     print(json.dumps(query_obj))
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
@@ -237,8 +232,6 @@ if __name__ == "__main__":
         password = getpass()
         auth = (args.user, password)
 
-    model = load_fasttext_model()
-
     base_url = "https://{}:{}/".format(host, port)
     print(base_url)
     opensearch = OpenSearch(
@@ -258,9 +251,9 @@ if __name__ == "__main__":
     print(query_prompt)
     user_query = input()
     query = user_query.rstrip()
-    prediction = model.predict(query)
-    print(prediction, 'is the predicted class')
+    predictions = organize_predictions(query)
+    print(predictions)
     #### W3: classify the query
     print(f'querying with use_syns {use_syns}')
-    search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns)
+    search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns, filters=generate_filter())
     
