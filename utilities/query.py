@@ -21,6 +21,9 @@ def load_fasttext_model():
     model = fasttext.load_model('/workspace/search_with_machine_learning_course/category_model_week3.bin')
     return model 
 
+def parse_prediction(_prediction):
+    return dict(zip(*_prediction))
+
 
 # expects clicks and impressions to be in the row
 def create_prior_queries_from_group(
@@ -237,6 +240,7 @@ if __name__ == "__main__":
     model = load_fasttext_model()
 
     base_url = "https://{}:{}/".format(host, port)
+    print(base_url)
     opensearch = OpenSearch(
         hosts=[{'host': host, 'port': port}],
         http_compress=True,  # enables gzip compression for request bodies
