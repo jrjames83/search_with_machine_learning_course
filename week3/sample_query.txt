@@ -1,7 +1,14 @@
+# Filter vs MUST 
+# https://stackoverflow.com/questions/43349044/what-is-the-difference-between-must-and-filter-in-query-dsl-in-elasticsearch
+# MUST clause generates a score 
+# Filtering does NOT generate a score 
+
 GET /bbuy_products/_mapping
+
+# Filtering Approach Below
 GET /bbuy_products/_search
 {
-  "size": 2,
+  "size": 5,
   "sort": [
     {
       "_score": {
@@ -13,7 +20,9 @@ GET /bbuy_products/_search
     "function_score": {
       "query": {
         "bool": {
-          "must": [],
+          "must": [{
+            "term":{ "categoryLeaf" : "pcmcat171900050029" }
+            }],
           "should": [
             {
               "match": {
@@ -129,6 +138,9 @@ GET /bbuy_products/_search
   "_source": [
     "name",
     "shortDescription",
-    "categoryPathIds"
+    "categoryPathIds",
+    "categoryLeaf",
+    "categoryPath",
+    "categoryLeaf.keyword"
   ]
 }

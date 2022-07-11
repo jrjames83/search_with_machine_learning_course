@@ -57,7 +57,7 @@ def create_prior_queries(doc_ids, doc_id_weights,
     return click_prior_query
 
 
-def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None, use_syns=False):
+def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=20, source=None, use_syns=False):
     name_field = "name.synonyms" if use_syns else "name"
     query_obj = {
         'size': size,
@@ -283,6 +283,7 @@ if __name__ == "__main__":
                 filters=None)
         print(df)
     elif int(args.filter_category) == 2:
+        # python utilities/query.py --filter_category 2
         predictions = organize_predictions(query)
         top_categories = predictions.query('score > @MINIMUM_PREDICTION_THRESHOLD')['category'].to_list()        
         print('Logging Both Results!')
@@ -299,4 +300,5 @@ if __name__ == "__main__":
                 filters=None)   
 
         print(filtered)   
+        print()
         print(unfiltered)          

@@ -1,5 +1,3 @@
-import json 
-
 def generate_filter(categories: list):
     """
         Generate a filter clause statement from a list of categories

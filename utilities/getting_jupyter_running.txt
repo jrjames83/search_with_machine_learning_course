@@ -1,0 +1,16 @@
+pip install jupyter (or add to requirements.txt and docker-compose down /up )
+
+https://github.com/gitpod-io/gitpod/issues/758
+
+jupyter notebook password
+(use something you'll remember)
+
+
+jupyter notebook --NotebookApp.allow_origin=\'$(gp url 8888)\'
+and allow VSCode in Gitpod to open the URL which will be like:
+
+https://8888-jrjames83-searchwithmac-lvqlcegsoth.ws-us47.gitpod.io/tree?
+
+
+
+
