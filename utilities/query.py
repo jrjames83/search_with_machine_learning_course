@@ -12,6 +12,9 @@ import pandas as pd
 import fileinput
 import logging
 import fasttext
+import pandas as pd
+from pandas import json_normalize
+
 
 from model_parser import organize_predictions
 from generate_filter_clause import generate_filter
@@ -19,6 +22,9 @@ from generate_filter_clause import generate_filter
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s')
+
+# pd.set_option('display.max_colwidth', 200)
+
 
 # expects clicks and impressions to be in the row
 def create_prior_queries_from_group(
@@ -51,7 +57,7 @@ def create_prior_queries(doc_ids, doc_id_weights,
     return click_prior_query
 
 
-def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=2, source=None, use_syns=False):
+def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None, use_syns=False):
     name_field = "name.synonyms" if use_syns else "name"
     query_obj = {
         'size': size,
@@ -189,12 +195,15 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
 
 
 def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc", use_syns=False, filters=None):
-    query_obj = create_query(user_query, click_prior_query=None, filters=filters, sort="_score", sortDir=sortDir, source=['name', 'shortDescription'], use_syns=use_syns)
-    print(json.dumps(query_obj))
+    query_obj = create_query(user_query, click_prior_query=None, filters=filters, sort="_score", sortDir=sortDir, source=['name', 'shortDescription', 'categoryLeaf'], use_syns=use_syns)
+    # print(json.dumps(query_obj))
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
         hits = response['hits']['hits']
-        print(json.dumps(response, indent=2))
+        # _df = pd.DataFrame(hits)
+        _df = json_normalize(hits)
+        # print(json.dumps(response, indent=2))
+        return _df
 
 
 if __name__ == "__main__":
@@ -253,15 +262,41 @@ if __name__ == "__main__":
     print(query_prompt)
     user_query = input()
     query = user_query.rstrip()
-    if int(args.filter_category) != 0:
-        predictions = organize_predictions(query)
-        top_categories = predictions.query('score > .20')['category'].to_list()
-        print(predictions)
-        print(top_categories)
-        search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns, filters=generate_filter(top_categories))
-    else:
-        search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns, filters=None)
     #### W3: classify the query
-    print(f'querying with use_syns {use_syns}')
-    
-    
+    MINIMUM_PREDICTION_THRESHOLD = .20
+    if int(args.filter_category) == 0:
+        predictions = organize_predictions(query)
+        top_categories = predictions.query('score > @MINIMUM_PREDICTION_THRESHOLD')['category'].to_list()
+        df = search(client=opensearch, 
+                user_query=query, 
+                index=index_name, 
+                use_syns=use_syns, 
+                filters=generate_filter(top_categories))
+        print(df)
+        # import pdb; pdb.set_trace()
+    elif int(args.filter_category) == 1:
+        print('searching without model prediction filtering')
+        df = search(client=opensearch, 
+                user_query=query, 
+                index=index_name, 
+                use_syns=use_syns, 
+                filters=None)
+        print(df)
+    elif int(args.filter_category) == 2:
+        predictions = organize_predictions(query)
+        top_categories = predictions.query('score > @MINIMUM_PREDICTION_THRESHOLD')['category'].to_list()        
+        print('Logging Both Results!')
+        filtered = search(client=opensearch, 
+                user_query=query, 
+                index=index_name, 
+                use_syns=use_syns, 
+                filters=generate_filter(top_categories))
+
+        unfiltered = search(client=opensearch, 
+                user_query=query, 
+                index=index_name, 
+                use_syns=use_syns, 
+                filters=None)   
+
+        print(filtered)   
+        print(unfiltered)          
