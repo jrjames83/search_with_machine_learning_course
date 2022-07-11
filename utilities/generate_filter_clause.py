@@ -1,16 +1,13 @@
 import json 
 
-
-def generate_filter(category_leafs: list):
-    clause = f'''
-    {
-            "bool": {
-                "should": [
-                    {"term": {"categoryLeaf": "pcmcat214700050000"}},
-                    {"term": {"categoryLeaf": "pcmcat171900050029"}}
-                ]
-            }
-        }
-    '''
+def generate_filter(categories: list):
+    """
+        Generate a filter clause statement from a list of categories
+    """
+    clause = dict()
+    clause['bool'] = dict()
+    clause['bool']['should'] = []
+    for c in categories:
+        clause['bool']['should'].append({"term": {"categoryLeaf": c}})
     return clause
  

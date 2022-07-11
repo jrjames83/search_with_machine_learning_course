@@ -198,6 +198,7 @@ def search(client, user_query, index="bbuy_products", sort=None, sortDir="desc",
 
 
 if __name__ == "__main__":
+    #  python utilities/query.py --filter_category 1 if you want to use predictions
     host = 'localhost'
     port = 9200
     auth = ('admin', 'admin')  # For testing only. Don't store credentials in code.
@@ -212,6 +213,7 @@ if __name__ == "__main__":
     general.add_argument('--user',
                          help='The OpenSearch admin.  If this is set, the program will prompt for password too. If not set, use default of admin/admin')
     general.add_argument("--synonyms", default=1, help="Use Synonyms.")
+    general.add_argument("--filter_category", default=0, help="Use Category Filtering")
 
     args = parser.parse_args()
     print(args)
@@ -230,7 +232,7 @@ if __name__ == "__main__":
         use_syns = False
     if args.user:
         password = getpass()
-        auth = (args.user, password)
+        auth = (args.user, password)        
 
     base_url = "https://{}:{}/".format(host, port)
     print(base_url)
@@ -251,9 +253,15 @@ if __name__ == "__main__":
     print(query_prompt)
     user_query = input()
     query = user_query.rstrip()
-    predictions = organize_predictions(query)
-    print(predictions)
+    if int(args.filter_category) != 0:
+        predictions = organize_predictions(query)
+        top_categories = predictions.query('score > .20')['category'].to_list()
+        print(predictions)
+        print(top_categories)
+        search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns, filters=generate_filter(top_categories))
+    else:
+        search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns, filters=None)
     #### W3: classify the query
     print(f'querying with use_syns {use_syns}')
-    search(client=opensearch, user_query=query, index=index_name, use_syns=use_syns, filters=generate_filter())
+    
     
