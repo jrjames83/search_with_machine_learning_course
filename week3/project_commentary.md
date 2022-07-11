@@ -4,16 +4,16 @@
 
 ### How many unique categories did you see in your rolled up training data when you set the minimum number of queries per category to 1000? To 10000?
 
-- 500 threshold: `559`
-- 1000 threshold: `406`
-- 10000 threshold: `79`
+- 500 threshold: `559 unique categories`
+- 1000 threshold: `406 unique categories`
+- 10000 threshold: `79 unique categories`
 
 Link to notebook/algorith/output: https://gist.github.com/jrjames83/35a454dd8312d421186bee2498b7226b
 
 ### Best values acheived for `R@1`, `R@2` and `R@3`
 
 #### Model Training and Parameterization
-- 25 epochs and wordNgrms of 2 were better than the defaults. I kept getting core dumps during training when experimenting with non default learning rates, so I moved on. 
+- 25 epochs and wordNgrms of 2 were better than the defaults. I kept getting core dumps during training when experimenting with non default learning rates along with wordNgrams, so I moved on and used the below:
 ```
 WORKING_DIR=/workspace/datasets/fasttext
 MODEL_NAME="category_model_week3"
@@ -58,7 +58,7 @@ def generate_filter(categories: list):
     return clause
 ```
 
-A complete example of how I've incorporated the filtering into the query is below, as a reference point. 
+A complete example of how I've incorporated the filtering into the query is below, as a reference point. I also learned that using a `filter` clause doesn't impact scoring, it's simply a step that does post-processing on the retrieved results set. I don't know if this is the optimal way. I also wonder if we're predicting a leaf with both ancestors and descendants, should we include all downstream descendants to maximize recall, but I didn't have time to think this through. 
 
 ```
 GET /bbuy_products/_search
@@ -271,7 +271,7 @@ Logging Both Results!
 9  bbuy_products  _doc  3133099   546.55554  [pcmcat171900050029]  [LifeProof - Case for Apple® iPhone® 4 and 4S ...  [Compatible with Apple iPhone 4 and 4S; polyca...
 ```
 
-The word `touchpad` below. Somewhat ambiguous, but we're not showing dishwashers!
+The word `touchpad` below. Somewhat ambiguous, but we're not showing dishwashers at least, when using the ML generated filters. 
 ```
 touchpad
 Warning : `load_model` does not return WordVectorModel or SupervisedModel any more, but a `FastText` object which is very similar.
@@ -294,7 +294,7 @@ Logging Both Results!
 9  bbuy_products  _doc  4747055   0.060672        [abcat0905001]  [Maytag - 24" Touchpad Built-In Dishwasher - B...  [Energy star® qualified; touch control with 11...
 ```
 
-Once more! `lcd tv`
+Once more! `lcd tv` - using the ML based filter, we're definitely in the correct category!
 
 ```
 lcv tv
@@ -347,7 +347,7 @@ None
 8  bbuy_products  _doc  3476048  ...  [pcmcat144700050004]  [Beats By Dr. Dre - Beats Studio Over-the-Ear ...  [Over-the-ear design; active noise cancellatio...
 9  bbuy_products  _doc  4676961  ...  [pcmcat144700050004]  [Beats By Dr. Dre - Beats Mixr Over-the-Ear He...  [Over-the-ear design; in-line microphone; rota...
 ```
-Why is this the case? It appears that `beats` rolls up to `Movies and TV Shows`, which will likely nullify any records from the retrieval step. 
+Why is this the case? It appears that `beats` rolls up to `Movies and TV Shows`, which will likely nullify any records from the retrieval step. Since this is a top query, we wouldn't rely on a model to predict its category, but it would be worth doing a complete error analysis on this one in a production scenario. 
 
 ```python
 In [1]: from model_parser import *
@@ -363,7 +363,7 @@ Out[2]:
 4        abcat0101001  0.010403  Best Buy > TV & Home Theater > TVs > All Flat-...
 ```
 
-Had we used a more complex query, it would appear that the model performs OK
+Had we used a more complex query `beats dre`, it would appear that the model performs OK and selects the correct category. 
 
 ```python
 In [3]: organize_predictions('beats dre')
@@ -376,6 +376,7 @@ Out[3]:
 3  pcmcat143000050007  0.089059  Best Buy > Audio & MP3 > Headphones > Earbud H...
 4  pcmcat171900050028  0.086621  Best Buy > Mobile Phones > Mobile Phone Access...
 ```
+
 `lion king` is another query where the model doesn't return results. 
 
 ```
@@ -430,7 +431,7 @@ Logging Both Results!
 10  bbuy_products  _doc  8891933  0.123757       [abcat0807005]                     [HP - 564 Photo Ink Cartridge]  [Compatible with HP d5460, ps pro68550, 
 ```
 
-Probing the models' outupt for the query we can see that we came close! The 2nd category was the correct one, but for whatever reason, headphones was the highest confidence category and it was over my threshold of .20. 
+Probing the model's outupt for the query we can see that we came close! The 2nd category was the correct one, but for whatever reason, headphones was the highest confidence category and it was over my threshold of .20. In a production scenario, this would definitely be worth debugging. 
 
 ```python
 In [1]: from model_parser import *
@@ -448,11 +449,8 @@ Out[2]:
 
 ### Bottom Line Reflections
 
-Associating queries with categories can be useful for filtering purposes and potentially for shorter tail queries (as seen in the succesful queries section) where `bm25` scoring doesn't do well without deliberate use of function scoring with document signals like popuarlity or through methods like `learning to rank`. Though, to the course author's point, given the importance of these short tail queries, you're better off investing in human mappings to your taxoomy to avoid classification issues. 
+Associating queries with categories can be useful for filtering purposes and potentially for shorter tail queries (as seen in the succesful queries section) where `bm25` scoring doesn't do well without deliberate use of function scoring with document signals like popuarlity or through methods like `learning to rank`. Though, to the course authors' point, given the importance of these short tail queries, you're better off investing in human mappings to your taxoomy to avoid classification issues, like was the case with `beats`. 
 
 As the query gets longer and `bm25` tends to do a better job of retrieval, I wonder how impactful this technique can be, outside of an enviornment where the user is filtering by price and you want to avoid running into precision issues, depending on how many results are retrieved and ready to be sorted. Perhaps you can get away with quality sorting for mid to long tail queries using some `minimum_should_match` clauses and document popularity cutoffs before rendering the sorted results. You'd have to benchmark the hand-crafted sort against the model for a variety of queries to get a sense of the tradeoffs. 
 
-Thinking through how the taxonomy is pruned and what effects this has on the classifier quality is difficult, at least without a robust human judgement list. I think I'd want to test multiple classifiers, each time checking how often the filter exercise results in no remaining records after initial retrieval, but also balancing ML classifier thresholds. It's a big effort to say the least!
-
-
-
+Thinking through how the taxonomy is pruned and what effects this has on the classifier quality is difficult, at least without a robust human judgement list or some programmatic heuristic that attempts to address the precision/recall tradeoff. I think I'd want to test multiple classifiers, each time checking how often the filter exercise results in no remaining records after initial retrieval, but also balancing ML classifier thresholds. It's a big effort to say the least!
