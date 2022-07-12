@@ -144,3 +144,308 @@ GET /bbuy_products/_search
     "categoryLeaf.keyword"
   ]
 }
+
+
+# Another version of it 
+
+GET /bbuy_products/_search
+{
+  "size": 12,
+  "sort": [
+    {
+      "_score": {
+        "order": "desc"
+      }
+    }
+  ],
+  "query": {
+    "function_score": {
+      "query": {
+        "bool": {
+          "must": [],
+          "should": [
+            {
+              "match": {
+                "name": {
+                  "query": "otterbox case",
+                  "fuzziness": "1",
+                  "prefix_length": 2,
+                  "boost": 0.01
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "name.hyphens": {
+                  "query": "iphone case",
+                  "slop": 1,
+                  "boost": 50
+                }
+              }
+            },
+            {
+              "multi_match": {
+                "query": "iphone case",
+                "type": "phrase",
+                "slop": "6",
+                "minimum_should_match": "2<75%",
+                "fields": [
+                  "name^10",
+                  "name.hyphens^10",
+                  "shortDescription^5",
+                  "longDescription^5",
+                  "department^0.5",
+                  "sku",
+                  "manufacturer",
+                  "features",
+                  "categoryPath"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "sku": [
+                  "iphone",
+                  "case"
+                ],
+                "boost": 50
+              }
+            },
+            {
+              "match": {
+                "name.hyphens": {
+                  "query": "iphone case",
+                  "operator": "OR",
+                  "minimum_should_match": "2<75%"
+                }
+              }
+            }
+          ],
+          "minimum_should_match": 1,
+          "filter": {
+            "bool": {
+              "should": [
+                {
+                  "term": {
+                    "categoryLeaf": "pcmcat214700050000"
+                  }
+                },
+                {
+                  "term": {
+                    "categoryLeaf": "pcmcat171900050029"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "boost_mode": "multiply",
+      "score_mode": "sum",
+      "functions": [
+        {
+          "filter": {
+            "exists": {
+              "field": "salesRankShortTerm"
+            }
+          },
+          "gauss": {
+            "salesRankShortTerm": {
+              "origin": "1.0",
+              "scale": "100"
+            }
+          }
+        },
+        {
+          "filter": {
+            "exists": {
+              "field": "salesRankMediumTerm"
+            }
+          },
+          "gauss": {
+            "salesRankMediumTerm": {
+              "origin": "1.0",
+              "scale": "1000"
+            }
+          }
+        },
+        {
+          "filter": {
+            "exists": {
+              "field": "salesRankLongTerm"
+            }
+          },
+          "gauss": {
+            "salesRankLongTerm": {
+              "origin": "1.0",
+              "scale": "1000"
+            }
+          }
+        },
+        {
+          "script_score": {
+            "script": "0.0001"
+          }
+        }
+      ]
+    }
+  },
+  "_source": [
+    "name",
+    "shortDescription",
+    "categoryPathIds",
+    "categoryLeaf",
+    "categoryPath",
+    "categoryLeaf.keyword"
+  ]
+}
+
+
+# Another - finally got it working with a terms filter 
+
+GET /bbuy_products/_search
+{
+  "size": 12,
+  "sort": [
+    {
+      "_score": {
+        "order": "desc"
+      }
+    }
+  ],
+  "query": {
+    "function_score": {
+      "query": {
+        "bool": {
+          "must": [],
+          "should": [
+            {
+              "match": {
+                "name": {
+                  "query": "otterbox case",
+                  "fuzziness": "1",
+                  "prefix_length": 2,
+                  "boost": 0.01
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "name.hyphens": {
+                  "query": "iphone case",
+                  "slop": 1,
+                  "boost": 50
+                }
+              }
+            },
+            {
+              "multi_match": {
+                "query": "iphone case",
+                "type": "phrase",
+                "slop": "6",
+                "minimum_should_match": "2<75%",
+                "fields": [
+                  "name^10",
+                  "name.hyphens^10",
+                  "shortDescription^5",
+                  "longDescription^5",
+                  "department^0.5",
+                  "sku",
+                  "manufacturer",
+                  "features",
+                  "categoryPath"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "sku": [
+                  "iphone",
+                  "case"
+                ],
+                "boost": 50
+              }
+            },
+            {
+              "match": {
+                "name.hyphens": {
+                  "query": "iphone case",
+                  "operator": "OR",
+                  "minimum_should_match": "2<75%"
+                }
+              }
+            }
+          ],
+          "minimum_should_match": 1,
+          "filter": [
+            {
+              "terms": {
+                "categoryPathIds.keyword": [
+                  "pcmcat171900050029",
+                  "pcmcat214700050000"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "boost_mode": "multiply",
+      "score_mode": "sum",
+      "functions": [
+        {
+          "filter": {
+            "exists": {
+              "field": "salesRankShortTerm"
+            }
+          },
+          "gauss": {
+            "salesRankShortTerm": {
+              "origin": "1.0",
+              "scale": "100"
+            }
+          }
+        },
+        {
+          "filter": {
+            "exists": {
+              "field": "salesRankMediumTerm"
+            }
+          },
+          "gauss": {
+            "salesRankMediumTerm": {
+              "origin": "1.0",
+              "scale": "1000"
+            }
+          }
+        },
+        {
+          "filter": {
+            "exists": {
+              "field": "salesRankLongTerm"
+            }
+          },
+          "gauss": {
+            "salesRankLongTerm": {
+              "origin": "1.0",
+              "scale": "1000"
+            }
+          }
+        },
+        {
+          "script_score": {
+            "script": "0.0001"
+          }
+        }
+      ]
+    }
+  },
+  "_source": [
+    "name",
+    "shortDescription",
+    "categoryPathIds",
+    "categoryLeaf",
+    "categoryPath",
+    "categoryLeaf.keyword"
+  ]
+}
+
